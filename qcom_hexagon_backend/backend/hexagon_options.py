@@ -118,8 +118,10 @@ class HexagonOptions:
         # provides a no-op stub) and the subsequent runtime-linking-dependent
         # code paths can crash.
         if os.environ.get("MLIR_ENABLE_DUMP", "").lower() in ("1", "true", "on"):
-            self.htp_kernel_gen = True
-            self.target_artifact = "llir"
+            # HexagonOptions is a frozen dataclass; use object.__setattr__
+            # to bypass the assignment guard.
+            object.__setattr__(self, "htp_kernel_gen", True)
+            object.__setattr__(self, "target_artifact", "llir")
 
         # Validate target_artifact
         valid_artifacts = {"ttir", "ttsharedir", "llir", "o", "so"}
