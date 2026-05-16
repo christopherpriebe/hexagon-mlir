@@ -7,6 +7,18 @@ option(HEXAGON_MLIR_BUILD_TRANSLATE
 option(HEXAGON_MLIR_BUILD_LSP_SERVER
        "Build the hexagon-mlir-lsp-server executable."
        ON)
+option(HEXAGON_MLIR_OPT_LINK_EXECUTION_ENGINE
+       "Link MLIRExecutionEngine into linalg-hexagon-opt. Required for JIT \
+execution (e.g. by mlir-cpu-runner). The opt-only IR profiling path doesn't \
+use it; turn off to skip the dependency, which lets LLVM be built without \
+including the host arch in LLVM_TARGETS_TO_BUILD."
+       ON)
+
+if(HEXAGON_MLIR_OPT_LINK_EXECUTION_ENGINE)
+  set(_OPT_EXECUTION_ENGINE_LIB MLIRExecutionEngine)
+else()
+  set(_OPT_EXECUTION_ENGINE_LIB "")
+endif()
 
 if(HEXAGON_MLIR_BUILD_RUNTIME)
   add_subdirectory(runtime)
@@ -87,7 +99,7 @@ target_link_libraries(linalg-hexagon-opt PRIVATE
     MLIRPass
     MLIRSupport
     MLIRTransforms
-    MLIRExecutionEngine
+    ${_OPT_EXECUTION_ENGINE_LIB}
     MLIRMathToLLVM
     MLIRTransformUtils
     MLIRLLVMToLLVMIRTranslation
