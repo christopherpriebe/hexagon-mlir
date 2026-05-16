@@ -107,6 +107,20 @@ class HexagonOptions:
     deviceCleanup: bool = True
 
     def __post_init__(self):
+        # IR-profiling mode: when MLIR_ENABLE_DUMP=1 is set (the same env
+        # var that activates pass-manager IR printing in MLLVMIRTranslation.cpp),
+        # flip the compilation pipeline to the "llir" path. That path runs
+        # ttsharedir_to_llir -> translate_linalg_to_llvmir, which produces
+        # LLVM IR text without invoking linkRuntimeModules. The default
+        # "o" path goes through ttsharedir_to_obj -> translate_linalg_to_obj
+        # which links nine Hexagon runtime bitcode bundles into the kernel;
+        # in IR-profiling builds those bundles are absent (HEXAGON_MLIR_LINK_RUNTIME_MODULES=OFF
+        # provides a no-op stub) and the subsequent runtime-linking-dependent
+        # code paths can crash.
+        if os.environ.get("MLIR_ENABLE_DUMP", "").lower() in ("1", "true", "on"):
+            self.htp_kernel_gen = True
+            self.target_artifact = "llir"
+
         # Validate target_artifact
         valid_artifacts = {"ttir", "ttsharedir", "llir", "o", "so"}
         if self.target_artifact not in valid_artifacts:
