@@ -15,6 +15,7 @@ else()
 endif()
 
 add_mlir_library(Transforms
+  PARTIAL_SOURCES_INTENDED
   DoubleBufferGenericS1.cpp
   DoubleBufferGenericS2.cpp
   Transforms.cpp
