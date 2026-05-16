@@ -9,10 +9,16 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/include) # Tablegen'd files
 include_directories(${Python3_INCLUDE_DIR})
 include_directories(${pybind11_INCLUDE_DIR})
 
+option(HEXAGON_MLIR_BUILD_LIT_TESTS
+       "Configure the FileCheck/lit testsuite under qcom_hexagon_backend/test/."
+       ON)
+
 add_subdirectory(include)
 add_subdirectory(lib)
 add_subdirectory(bin)
-add_subdirectory(test)
+if(HEXAGON_MLIR_BUILD_LIT_TESTS)
+  add_subdirectory(test)
+endif()
 
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
