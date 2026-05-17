@@ -123,6 +123,24 @@ class HexagonOptions:
             object.__setattr__(self, "htp_kernel_gen", True)
             object.__setattr__(self, "target_artifact", "llir")
 
+        # Splice-profiling override: enable every pass family the search
+        # framework is supposed to control, so the corresponding splice
+        # anchors (HexagonDoubleBufferGenericS2, HexmemCpyToDMA,
+        # FormVirtualThreads/FormAsyncThreads, MatmulToHexKL) actually
+        # fire and the anchor-resolution in tools/score_windows.py
+        # doesn't collapse onto a single trace position. Without this,
+        # E1/E2/E3 in the splice-cost ranking all fall back to the same
+        # row on most Torch/Triton benchmarks because the default
+        # HexagonOptions has these features off.
+        if os.environ.get("HEX_FORCE_SPLICE_OPTIONS", "").lower() in ("1", "true", "on"):
+            object.__setattr__(self, "enableDoubleBuffering", True)
+            object.__setattr__(self, "enableHexagonmemCopyToDMA", True)
+            object.__setattr__(self, "enableMultiThreading", True)
+            object.__setattr__(self, "enableHexKL", True)
+            # fusion / enableVTCMTiling / enableVectorization /
+            # enableBufferization / enableConvertToHexagonmem already
+            # default to True upstream.
+
         # Validate target_artifact
         valid_artifacts = {"ttir", "ttsharedir", "llir", "o", "so"}
         if self.target_artifact not in valid_artifacts:
