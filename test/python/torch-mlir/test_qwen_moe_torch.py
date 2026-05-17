@@ -8,17 +8,27 @@
 # ===------------------------------------------------------------------------===
 """Qwen 1.5 MoE A2.7B end-to-end test.
 
-Open MoE LLM from Alibaba. ~14 GB on disk at fp16. Truncate via
-`HEX_QWEN_MOE_LAYERS=N` (default 1 — even one layer of an MoE produces
-substantial IR). The real model has 24 layers, 60 experts, top-4 routing.
+**Currently skipped.** The HuggingFace `transformers` implementation
+of Qwen2-MoE (`modeling_qwen2_moe.py:613`) does:
 
-Note: torch.export traces a STATIC computation graph. Real MoEs route
-each token to a sparse subset of experts at runtime, which torch.export
-struggles to lower without scripting tricks. The Qwen MoE implementation
-in transformers does a per-token gather; on export this typically
-materializes as a static dense-style dispatch. The resulting IR is
-still illustrative of the MoE pipeline shape, even if not exactly the
-runtime behavior.
+    expert_hitted = (expert_mask.sum(dim=(-1, -2)) > 0).nonzero(
+        as_tuple=True)[0].tolist()
+
+The `.nonzero().tolist()` chain produces a Python list whose length
+depends on the runtime tensor values (how many experts got routed to).
+`torch.export` is a static-shape tracer and can't lower this:
+
+    torch.fx.experimental.symbolic_shapes.GuardOnDataDependentSymNode:
+    Could not guard on data-dependent expression Eq(u0, 0)
+
+Set `HEX_QWEN_MOE_FORCE=1` to attempt the export anyway (it will fail).
+Mixtral, DeepSeek-V2-MoE, and the other production MoEs in transformers
+have the same pattern, so swapping models doesn't help. For MoE-shape
+IR coverage, see `test_toy_moe_torch.py` which uses a dense
+softmax-weighted mixture that traces cleanly.
+
+When transformers ships a torch.export-friendly MoE implementation (or
+the LLM-Compiler / Optimum patches land), drop this skip.
 """
 
 import os
@@ -36,6 +46,14 @@ MODEL_NAME = os.environ.get("HEX_QWEN_MOE_MODEL", "Qwen/Qwen1.5-MoE-A2.7B")
 
 
 def test_qwen_moe():
+    if os.environ.get("HEX_QWEN_MOE_FORCE", "0") != "1":
+        pytest.skip(
+            "Qwen MoE's transformers implementation uses .nonzero().tolist() "
+            "for expert routing, which torch.export rejects as data-dependent. "
+            "Set HEX_QWEN_MOE_FORCE=1 to attempt the export anyway (will fail "
+            "with GuardOnDataDependentSymNode). See test_toy_moe_torch.py for "
+            "MoE-shape IR coverage that does trace."
+        )
     n_layer = int(os.environ.get("HEX_QWEN_MOE_LAYERS", "1"))
     cfg = AutoConfig.from_pretrained(MODEL_NAME)
     cfg.num_hidden_layers = n_layer
