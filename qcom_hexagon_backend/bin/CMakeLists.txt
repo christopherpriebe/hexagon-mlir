@@ -13,6 +13,14 @@ execution (e.g. by mlir-cpu-runner). The opt-only IR profiling path doesn't \
 use it; turn off to skip the dependency, which lets LLVM be built without \
 including the host arch in LLVM_TARGETS_TO_BUILD."
        ON)
+option(HEXAGON_MLIR_BUILD_OPT
+       "Build the linalg-hexagon-opt executable. The Triton plugin build \
+doesn't need it (Triton compiles in-process via Python bindings), and \
+attempting to link it in Triton's context pulls in TritonGPU/TritonNvidiaGPU \
+IR libs that have unresolved references to internal Utility helpers \
+(inferDstEncoding, verifyBarrierType). Set OFF when building via Triton's \
+setup.py; ON in the standalone build_opt.sh wrapper."
+       ON)
 
 if(HEXAGON_MLIR_OPT_LINK_EXECUTION_ENGINE)
   set(_OPT_EXECUTION_ENGINE_LIB MLIRExecutionEngine)
@@ -77,6 +85,7 @@ endif()
 # linalg-hexagon-opt
 ###############################################################################
 
+if(HEXAGON_MLIR_BUILD_OPT)
 add_llvm_executable(linalg-hexagon-opt linalg-hexagon-opt.cpp PARTIAL_SOURCES_INTENDED)
 llvm_update_compile_flags(linalg-hexagon-opt)
 target_link_libraries(linalg-hexagon-opt PRIVATE
@@ -109,6 +118,7 @@ target_link_libraries(linalg-hexagon-opt PRIVATE
 )
 
 mlir_check_all_link_libraries(linalg-hexagon-opt)
+endif()
 
 ###############################################################################
 # hexagon-mlir-lsp-server
