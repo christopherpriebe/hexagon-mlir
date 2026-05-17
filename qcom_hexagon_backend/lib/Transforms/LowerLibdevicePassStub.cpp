@@ -29,7 +29,14 @@
 
 namespace mlir::hexagon {
 
-namespace {
+// NOT in an anonymous namespace: MLIR's TypeID system rejects PassWrapper
+// instantiations whose target type is in an anonymous namespace
+// ("Using TypeID on a class with an anonymous namespace requires an
+// explicit TypeID definition. The implicit fallback uses string name,
+// which does not guarantee uniqueness in anonymous contexts.") The fix
+// per the diagnostic is either MLIR_DEFINE_EXPLICIT_TYPE_ID or moving
+// the class to a named namespace; the latter is simpler. The
+// `Stub` suffix makes the symbol unambiguous w.r.t. the real pass.
 struct LowerLibdeviceStubPass
     : public PassWrapper<LowerLibdeviceStubPass, OperationPass<ModuleOp>> {
   StringRef getArgument() const final { return "lower-libdevice"; }
@@ -39,7 +46,6 @@ struct LowerLibdeviceStubPass
   }
   void runOnOperation() final { /* no-op */ }
 };
-} // namespace
 
 std::unique_ptr<OperationPass<ModuleOp>> createLowerLibdevicePass() {
   return std::make_unique<LowerLibdeviceStubPass>();
